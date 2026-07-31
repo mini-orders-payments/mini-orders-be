@@ -25,5 +25,12 @@ export class OrderController {
   async findbyId(@Param('id', ParseIntPipe)id:number):Promise<Order>{
     return await this.orderService.getOrderbyID(id)
   }
+
+  @Post(':id/pay')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async payOrder(@Param('id',ParseIntPipe)id:number){
+    
+    return await this.orderService.payForOrder(id)
+  }
   
 }

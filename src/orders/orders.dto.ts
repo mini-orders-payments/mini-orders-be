@@ -23,3 +23,11 @@ export class CreateOrderDto{
 
 }
 
+export class UpdateOrderDto{
+    @IsNotEmpty()
+    @IsEnum(OrderStatus, { message: 'Status must be PENDING, COMPLETED, or FAILED' })
+    status!: OrderStatus;
+
+
+}
+

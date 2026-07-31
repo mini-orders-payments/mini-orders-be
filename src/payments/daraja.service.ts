@@ -8,7 +8,7 @@ export class DarajaService {
    * with actual Daraja / Safaricom M-Pesa API calls).
    */
   async initiateSTKPush(
-    orderId: string,
+    orderId: number,
     amount: number,
   ): Promise<{ merchantRequestId: string; checkoutRequestId: string }> {
     await new Promise((resolve) => setTimeout(resolve, 250));
