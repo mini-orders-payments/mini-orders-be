@@ -1,9 +1,9 @@
 import {IsNotEmpty,IsNumber,IsString,IsEnum,IsPositive,IsUUID} from 'class-validator'
 
 export enum OrderStatus{
-    PENDING='PENDING',
-    COMPLETED='COMPLETED',
-    FAILED='FAILED'
+    pending='pending',
+    completed='completed',
+    failed='failed'
 
 }
 
@@ -18,14 +18,14 @@ export class CreateOrderDto{
     amount!:number;
 
     @IsNotEmpty()
-    @IsEnum(OrderStatus, { message: 'Status must be PENDING, COMPLETED, or FAILED' })
+    @IsEnum(OrderStatus, { message: 'Status must be pending, completed, or failed' })
     status!: OrderStatus;
 
 }
 
 export class UpdateOrderDto{
     @IsNotEmpty()
-    @IsEnum(OrderStatus, { message: 'Status must be PENDING, COMPLETED, or FAILED' })
+    @IsEnum(OrderStatus, { message: 'Status must be pending, completed, or failed' })
     status!: OrderStatus;
 
 

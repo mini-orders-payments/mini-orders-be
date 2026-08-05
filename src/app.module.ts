@@ -5,6 +5,7 @@ import { HealthModule } from './health/health.module';
 import { OrderModule } from './orders/order.module';
 import { PaymentModule } from './payments/payment.module';
 import { Order } from './orders/order.entity';
+import { Payment } from './payments/payment.entity';
 
 @Module({
   imports: [
@@ -26,7 +27,9 @@ import { Order } from './orders/order.entity';
           'mini_order_payments',
         ),
         autoLoadEntities: true,
-        entities: [Order],
+        entities: [Order,Payment],
+            
+
         synchronize: true, // TODO: Day 2+ — turn off in production; fine for local scaffolding
       }),
     }),

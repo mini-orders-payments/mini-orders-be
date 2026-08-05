@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post ,Get,Param,ParseIntPipe } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post ,Get,Param,ParseIntPipe,Delete } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './orders.dto';
 import { Order } from './order.entity';
@@ -26,11 +26,18 @@ export class OrderController {
     return await this.orderService.getOrderbyID(id)
   }
 
-  @Post(':id/pay')
-  @HttpCode(HttpStatus.ACCEPTED)
-  async payOrder(@Param('id',ParseIntPipe)id:number){
-    
-    return await this.orderService.payForOrder(id)
+
+  @Post(':id/edit')
+  @HttpCode(HttpStatus.OK)
+  async editOrder(@Param('id',ParseIntPipe)id:number,@Body() body: { amount: number }){
+    return await this.orderService.editOrder(id,body.amount)
   }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async deleteOrder(@Param('id',ParseIntPipe)id:number){
+    return await this.orderService.deleteOrder(id)
+  }
+
   
 }

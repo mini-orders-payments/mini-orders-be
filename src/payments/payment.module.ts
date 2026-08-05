@@ -1,10 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Module,forwardRef} from '@nestjs/common';
 import { DarajaService } from './daraja.service';
+import { PaymentController } from './payment.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Payment } from './payment.entity';
+import { OrderModule } from 'src/orders/order.module';
+import { DarajaAuthService } from './darajaAuth.service';
 
 @Module({
-  // TODO: Day 3 — add PaymentController / PaymentService and wire DarajaService into the payment flow
-  
-  providers: [DarajaService],
+  imports: [
+    TypeOrmModule.forFeature([Payment]),
+    forwardRef(()=>OrderModule), 
+  ],
+  controllers:[PaymentController],
+  providers: [DarajaService,DarajaAuthService],
   exports: [DarajaService],
 })
 export class PaymentModule {}

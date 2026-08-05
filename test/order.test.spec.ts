@@ -4,13 +4,13 @@ import { Repository } from 'typeorm';
 import { OrderService } from 'src/orders/order.service';
 import { Order } from 'src/orders/order.entity';
 import { CreateOrderDto } from 'src/orders/orders.dto';
-import jest
+
 
 describe('OrderService', () => {
   let service: OrderService;
   let repository: jest.Mocked<Repository<Order>>;
 
-  // 1. Create fake database functions
+  
   const mockOrderRepository = {
     create: jest.fn(),
     save: jest.fn(),
@@ -19,7 +19,7 @@ describe('OrderService', () => {
   };
 
   beforeEach(async () => {
-    // 2. Build a fake NestJS testing module
+    
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderService,
@@ -33,6 +33,44 @@ describe('OrderService', () => {
     service = module.get<OrderService>(OrderService);
     repository = module.get(getRepositoryToken(Order));
     
-    // Clear mock histories between tests so tests don't pollute each other
+    
     jest.clearAllMocks();
   });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('createNewOrder', () => {
+    it('should successfully create and save a new order', async () => {
+      // 1. Arrange
+      const createOrderDto: CreateOrderDto = {
+        userId: 1,
+        orderNumber: 1001,
+        amount: 2500,
+        status: 'PENDING',
+      };
+
+      const createdEntity = { ...createOrderDto } as Order;
+      const savedOrder: Order = {
+        id: 1,
+        ...createOrderDto,
+        createdAt: new Date(),
+      };
+
+      // Mock implementation behavior
+      mockOrderRepository.create.mockReturnValue(createdEntity);
+      mockOrderRepository.save.mockResolvedValue(savedOrder);
+
+      // 2. Act
+      const result = await service.createNewOrder(createOrderDto);
+
+      // 3. Assert
+      expect(repository.create).toHaveBeenCalledWith(createOrderDto);
+      expect(repository.create).toHaveBeenCalledTimes(1);
+      
+      expect(repository.save).toHaveBeenCalledWith(createdEntity);
+      expect(repository.save).toHaveBeenCalledTimes(1);
+
+      expect(result).toEqual(savedOrder);
+    });

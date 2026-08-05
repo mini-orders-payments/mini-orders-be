@@ -1,9 +1,9 @@
 import { Entity,Column,PrimaryGeneratedColumn,CreateDateColumn } from 'typeorm';
 
  export enum OrderStatus{
-    PENDING='PENDING',
-    COMPLETED='COMPLETED',
-    FAILED='FAILED'
+    pending='pending',
+    completed='completed',
+    failed='failed'
 
 }
 
@@ -23,7 +23,7 @@ export class Order {
   @Column({type:'decimal'})
   amount!:number;
 
-  @Column({type:'varchar',default:'PENDING'})
+  @Column({type:'varchar',default:'pending'})
   status!:OrderStatus;
 
   @CreateDateColumn()

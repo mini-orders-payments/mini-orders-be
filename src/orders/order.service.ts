@@ -12,7 +12,7 @@ export class OrderService {
   constructor (
     @InjectRepository(Order)
     private readonly orderRepository : Repository <Order>,
-    private readonly Darajaservice:DarajaService,
+    
   ){}
 
 
@@ -25,7 +25,7 @@ export class OrderService {
   }
 
   async getOrderbyID(id:number):Promise<Order>{
-    const order= await this.orderRepository.findOne({where :{id}});
+    const order= await this.orderRepository.findOne({where: { id: id }});
 
     if (!order){
       throw new NotFoundException(`Order ${id} not found`)
@@ -49,34 +49,28 @@ export class OrderService {
 
       return await this.orderRepository.save(order)
     }
+  }
+  async editOrder(id:number, amount:number):Promise<Order>{
+    const order= await this.orderRepository.findOne({where :{id}});
 
+    if (!order){
+      throw new NotFoundException(`Order ${id} not found`)
+    }
+    else{
 
-    
+       order.amount = amount;
+
+      return await this.orderRepository.save(order)
+    }
   }
 
-  async payForOrder(ID:number):Promise< {order: Order; paymentdata: any }>{
-    const order= await this.getOrderbyID(ID)
-    
-    const id =order.id
-    const amount=order.amount
-    const status =order.status
-    
-    try{
-      const res=await this.Darajaservice.initiateSTKPush(id,amount)
-      
-      const updatedOrder=await this.updateOrder(id,OrderStatus.COMPLETED)
+  async deleteOrder(id:number):Promise<{id:number; msg:string}>{
+    await this.orderRepository.delete(id);
 
-      return {
-        order:updatedOrder,
-        paymentdata:res
-      }
-
+    return {
+      id:id,
+      msg: " Order deleted successfully"
     }
-    catch(error){
-      console.error(error);
-      throw error;
-    }
-    
   }
 
 }
