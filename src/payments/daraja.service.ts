@@ -54,8 +54,8 @@ export class DarajaService {
       PartyA: phoneNumber,        // customer's phone, format 2547XXXXXXXX
       PartyB: shortcode,
       PhoneNumber: phoneNumber,
-      CallBackURL: this.config.get('DARAJA_CALLBACK_URL'), // must be public HTTPS
-      AccountReference: orderId,  // shows on the customer's prompt — use your order number
+      CallBackURL: this.config.get('DARAJA_CALLBACK_URL'), // I use 'ngrok http 3000' to foward the backend to a live server
+      AccountReference: orderId,  // shows on the customer's prompt 
       TransactionDesc: 'Order payment',
     };
 
@@ -131,9 +131,9 @@ export class DarajaService {
   
     }
 
-  async handleDarajaCallback(checkoutRequestId: string, resultCode: number, raw: any,) {
+  async handleDarajaCallback(checkoutRequestId: string, resultCode: number, raw: any,){
   const payment = await this.paymentRepository.findOne({ where: { checkoutRequestId } });
-  if (!payment) return; // unknown callback — log and bail, don't throw (would trigger retries)
+  if (!payment) return;
 
   if (resultCode === 0) {
     const items = raw.CallbackMetadata.Item as { Name: string; Value: any }[];
@@ -141,7 +141,7 @@ export class DarajaService {
 
     payment.paymentCode = get('MpesaReceiptNumber');
     await this.paymentRepository.save(payment);
-
+    
     await this.orderService.updateOrder(payment.orderNumber, OrderStatus.completed);
   } else {
     
