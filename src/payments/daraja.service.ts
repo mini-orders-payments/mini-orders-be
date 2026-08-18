@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { OrderService } from 'src/orders/order.service';
 import { Order } from 'src/orders/order.entity';
 import { OrderStatus } from 'src/orders/order.entity';
+import { PaymentStatus } from './payment.entity';
 import { createPaymentDto } from './payment.dto';
 import { Payment } from './payment.entity';
 import { Repository } from 'typeorm';
@@ -41,6 +42,7 @@ export class DarajaService {
     const shortcode = this.config.get<string>('DARAJA_SHORTCODE');
     const passkey = this.config.get<string>('DARAJA_PASSKEY');
     const timestamp = this.generateTimestamp();
+    const partyA=this.config.get<string>('DARAJA_PARTYA');
 
     // Password = base64(Shortcode + Passkey + Timestamp) 
     const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
@@ -51,9 +53,9 @@ export class DarajaService {
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline', // or CustomerBuyGoodsOnline for a till
       Amount: Math.round(amount), // Daraja sandbox rejects decimals
-      PartyA: phoneNumber,        // customer's phone, format 2547XXXXXXXX
+      PartyA: partyA,       
       PartyB: shortcode,
-      PhoneNumber: phoneNumber,
+      PhoneNumber: phoneNumber, // customer's phone, format 2547XXXXXXXX
       CallBackURL: this.config.get('DARAJA_CALLBACK_URL'), // I use 'ngrok http 3000' to foward the backend to a live server
       AccountReference: orderId,  // shows on the customer's prompt 
       TransactionDesc: 'Order payment',
@@ -92,6 +94,24 @@ export class DarajaService {
 
   async payForOrder(ID:number,phoneNumber:string):Promise< {order: Order; paymentdata: any }>{
     const order= await this.orderService.getOrderbyID(ID)
+
+  //Idempotency check
+  const existingPayment = await this.paymentRepository.findOne({
+      where: { orderNumber: order.id },
+      order: { id: 'DESC' } // Grabs the latest attempt if there are multiple
+    });
+
+    if (existingPayment) {
+      if (existingPayment.status === PaymentStatus.pending) {
+        
+        throw new Error("A payment is already in progress. Please check your phone for the PIN prompt.");
+      }
+      if (existingPayment.status === PaymentStatus.completed) {
+        // Stop them from paying for an order that is already cleared.
+        throw new Error("This order has already been paid for successfully.");
+      }
+      // If the status is 'failed', we skip this block and allow them to try again!
+    }
     
     const id =order.id
     const amount=order.amount
@@ -100,19 +120,19 @@ export class DarajaService {
     try{
       const res=await this.initiateSTKPush(phoneNumber,id,amount,)
       
-      const updatedOrder=await this.orderService.updateOrder(id,OrderStatus.completed)
-
+      
       const populatedb= await this.createNewPayment({
-        orderNumber:updatedOrder.id,
-        amount:updatedOrder.amount,
+        orderNumber:order.id,
+        amount:order.amount,
         phoneNumber:res.phoneNumber,
         checkoutRequestId:res.checkoutRequestId,
         merchantRequestId:res.merchantRequestId,
         resultDesc:res.result
+
         })
 
       return {
-        order:updatedOrder,
+        order:order,
         paymentdata:res
       }
 
@@ -135,19 +155,27 @@ export class DarajaService {
   const payment = await this.paymentRepository.findOne({ where: { checkoutRequestId } });
   if (!payment) return;
 
+  const transactionDesc=raw.ResultDesc;
+
   if (resultCode === 0) {
     const items = raw.CallbackMetadata.Item as { Name: string; Value: any }[];
     const get = (name: string) => items.find((i) => i.Name === name)?.Value;
 
     payment.paymentCode = get('MpesaReceiptNumber');
+    //console.log("Enum check:",PaymentStatus.completed)
+    payment.status=PaymentStatus.completed
+    //console.log("Result desc check :",transactionDesc)
+    payment.resultDesc=transactionDesc
+
+
     await this.paymentRepository.save(payment);
     
     await this.orderService.updateOrder(payment.orderNumber, OrderStatus.completed);
   } else {
     
+    payment.status='failed' as PaymentStatus
+    payment.resultDesc=transactionDesc
     await this.paymentRepository.save(payment);
-    
-
     await this.orderService.updateOrder(payment.orderNumber, OrderStatus.failed);
   }
 }

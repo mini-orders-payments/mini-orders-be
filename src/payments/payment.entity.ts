@@ -31,7 +31,7 @@ export class Payment{
     @Column({nullable:true})
     paymentCode:string;
 
-    @Column({default:'pending'})
+    @Column({ type:'enum',enum:PaymentStatus, default:PaymentStatus.pending})
     status:PaymentStatus;
     
     @Column({ nullable: true })
