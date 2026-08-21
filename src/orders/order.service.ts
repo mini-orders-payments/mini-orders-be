@@ -72,5 +72,9 @@ export class OrderService {
       msg: " Order deleted successfully"
     }
   }
+  
+  async getOrdersByUserId(userId: number): Promise<Order[]> {
+  return await this.orderRepository.find({ where: { userId } });
+}
 
 }

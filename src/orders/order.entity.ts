@@ -17,9 +17,6 @@ export class Order {
   @Column()
   userId!:number;
 
-  @Column({type:'integer'})
-  orderNumber!:number;
-
   @Column({type:'decimal'})
   amount!:number;
 

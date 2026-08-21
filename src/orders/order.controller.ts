@@ -39,5 +39,11 @@ export class OrderController {
     return await this.orderService.deleteOrder(id)
   }
 
+  @Get('/user/:id')
+  @HttpCode(HttpStatus.OK)
+  async findUserOrders(@Param('id', ParseIntPipe)id:number):Promise<Order[]>{
+    return await this.orderService.getOrdersByUserId(id)
+  }
+
   
 }

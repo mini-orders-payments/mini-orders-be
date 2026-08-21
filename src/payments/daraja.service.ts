@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable ,HttpException,HttpStatus} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderService } from 'src/orders/order.service';
 import { Order } from 'src/orders/order.entity';
 import { OrderStatus } from 'src/orders/order.entity';
+import { PaymentStatus } from './payment.entity';
 import { createPaymentDto } from './payment.dto';
 import { Payment } from './payment.entity';
 import { Repository } from 'typeorm';
@@ -41,6 +42,7 @@ export class DarajaService {
     const shortcode = this.config.get<string>('DARAJA_SHORTCODE');
     const passkey = this.config.get<string>('DARAJA_PASSKEY');
     const timestamp = this.generateTimestamp();
+    const partyA=this.config.get<string>('DARAJA_PARTYA');
 
     // Password = base64(Shortcode + Passkey + Timestamp) 
     const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
@@ -51,9 +53,9 @@ export class DarajaService {
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline', // or CustomerBuyGoodsOnline for a till
       Amount: Math.round(amount), // Daraja sandbox rejects decimals
-      PartyA: phoneNumber,        // customer's phone, format 2547XXXXXXXX
+      PartyA: partyA,       
       PartyB: shortcode,
-      PhoneNumber: phoneNumber,
+      PhoneNumber: phoneNumber, // customer's phone, format 2547XXXXXXXX
       CallBackURL: this.config.get('DARAJA_CALLBACK_URL'), // I use 'ngrok http 3000' to foward the backend to a live server
       AccountReference: orderId,  // shows on the customer's prompt 
       TransactionDesc: 'Order payment',
@@ -92,6 +94,35 @@ export class DarajaService {
 
   async payForOrder(ID:number,phoneNumber:string):Promise< {order: Order; paymentdata: any }>{
     const order= await this.orderService.getOrderbyID(ID)
+
+  //Idempotency check
+  const existingPayment = await this.paymentRepository.findOne({
+      where: { orderNumber: order.id },
+      order: { id: 'DESC' }
+    });
+
+    if (existingPayment) {
+      if (existingPayment.status === PaymentStatus.pending) {
+        
+        throw new Error("A payment is already in progress. Please check your phone for the PIN prompt.");
+      }
+      if (existingPayment.status === PaymentStatus.completed) {
+        // Stop them from paying for an order that is already cleared.
+        throw new Error("This order has already been paid for successfully.");
+      }
+      // If the status is 'failed', we skip this block and allow them to try again
+    }
+
+    const tempCheckoutId = `temp_${Date.now()}_${Math.random()}`;
+    
+    let payment = await this.createNewPayment({
+      orderNumber: order.id,
+      amount: order.amount,
+      phoneNumber: phoneNumber,
+      checkoutRequestId: tempCheckoutId, //  dummy ID
+      merchantRequestId: 'processing...',
+      resultDesc: 'Initiating request to Safaricom...'
+    });
     
     const id =order.id
     const amount=order.amount
@@ -99,30 +130,43 @@ export class DarajaService {
     
     try{
       const res=await this.initiateSTKPush(phoneNumber,id,amount,)
-      
-      const updatedOrder=await this.orderService.updateOrder(id,OrderStatus.completed)
+            
+        payment.checkoutRequestId = res.checkoutRequestId;
+        payment.merchantRequestId = res.merchantRequestId;
+        payment.resultDesc = res.result;
 
-      const populatedb= await this.createNewPayment({
-        orderNumber:updatedOrder.id,
-        amount:updatedOrder.amount,
-        phoneNumber:res.phoneNumber,
-        checkoutRequestId:res.checkoutRequestId,
-        merchantRequestId:res.merchantRequestId,
-        resultDesc:res.result
-        })
+        await this.paymentRepository.save(payment);
+
+        await this.orderService.updateOrder(order.id, 'pending'); 
+        order.status = 'pending' as OrderStatus;
 
       return {
-        order:updatedOrder,
+        order:order,
         paymentdata:res
       }
 
     }
-    catch(error){
+    catch(error:any){
+
+      payment.status = 'failed' as PaymentStatus;
+      payment.resultDesc = error.message || 'Safaricom connection failed';
+      await this.paymentRepository.save(payment);
+      
       console.error(error);
-      throw error;
+
+      if (error.message.includes('API Gateway Refused') || error.message.includes('503') || error.message.includes('500')) {
+        
+        throw new HttpException(
+          'M-Pesa services are currently experiencing delays. Please try again in a few minutes.',
+          HttpStatus.BAD_GATEWAY
+        );
+      }
+
+      // Fallback for other errors
+      throw new HttpException(error.message || 'Payment initiation failed', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
     }
     
-  }
   async createNewPayment(dto:createPaymentDto): Promise<Payment>{
   
       const newpayment=this.paymentRepository.create(dto);
@@ -135,19 +179,27 @@ export class DarajaService {
   const payment = await this.paymentRepository.findOne({ where: { checkoutRequestId } });
   if (!payment) return;
 
+  const transactionDesc=raw.ResultDesc;
+
   if (resultCode === 0) {
     const items = raw.CallbackMetadata.Item as { Name: string; Value: any }[];
     const get = (name: string) => items.find((i) => i.Name === name)?.Value;
 
     payment.paymentCode = get('MpesaReceiptNumber');
+    //console.log("Enum check:",PaymentStatus.completed)
+    payment.status=PaymentStatus.completed
+    //console.log("Result desc check :",transactionDesc)
+    payment.resultDesc=transactionDesc
+
+
     await this.paymentRepository.save(payment);
     
     await this.orderService.updateOrder(payment.orderNumber, OrderStatus.completed);
   } else {
     
+    payment.status='failed' as PaymentStatus
+    payment.resultDesc=transactionDesc
     await this.paymentRepository.save(payment);
-    
-
     await this.orderService.updateOrder(payment.orderNumber, OrderStatus.failed);
   }
 }

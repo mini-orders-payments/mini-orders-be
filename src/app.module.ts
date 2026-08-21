@@ -6,6 +6,8 @@ import { OrderModule } from './orders/order.module';
 import { PaymentModule } from './payments/payment.module';
 import { Order } from './orders/order.entity';
 import { Payment } from './payments/payment.entity';
+import { AuthModule } from './auth/auth.module';
+import { User } from './auth/user.entity';
 
 @Module({
   imports: [
@@ -27,7 +29,7 @@ import { Payment } from './payments/payment.entity';
           'mini_order_payments',
         ),
         autoLoadEntities: true,
-        entities: [Order,Payment],
+        entities: [Order,Payment,User],
             
 
         synchronize: true, // TODO: Day 2+ — turn off in production; fine for local scaffolding
@@ -36,6 +38,7 @@ import { Payment } from './payments/payment.entity';
     HealthModule,
     OrderModule,
     PaymentModule,
+    AuthModule
   ],
 })
 export class AppModule {}

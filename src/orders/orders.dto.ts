@@ -8,9 +8,6 @@ export enum OrderStatus{
 }
 
 export class CreateOrderDto{
-    @IsNotEmpty()
-    @IsNumber({ maxDecimalPlaces: 2})
-    orderNumber!:number;
 
     @IsNotEmpty()
     @IsNumber()
