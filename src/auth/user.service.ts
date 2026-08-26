@@ -34,11 +34,4 @@ async getProfileWithOrderStats(userId: number) {
   return { id: `${user.id}`,phone:`${user.phoneNumber}`,name: `${user.firstName} ${user.lastName}`, email: user.email, stats };
 }
 
-async getUserOrders(userId:number){
-  const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
-  const orders = await this.orderService.getOrdersByUserId(userId);
-
-  return orders
-
-}
 }

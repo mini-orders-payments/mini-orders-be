@@ -24,4 +24,5 @@ export class AuthController {
   me(@CurrentUser() user: { id: number; email: string }) {
     return this.userService.getProfileWithOrderStats(user.id); // Frame 8's data
   }
+  
 }
