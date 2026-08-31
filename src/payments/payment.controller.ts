@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post ,Get,Param,ParseIntPipe,Delete, Injectable } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post ,Get,Param,ParseIntPipe,Delete, Injectable, } from '@nestjs/common';
 import { DarajaService } from './daraja.service';
 import { Payment } from './payment.entity';
 import { OrderService } from 'src/orders/order.service';
@@ -20,6 +20,11 @@ export class PaymentController{
     return await this.DarajaService.payForOrder(id,phoneNumber)
   }
 
+  @Get('order/:id')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async getPayment(@Param('id',ParseIntPipe)id:number){
+    return await this.DarajaService.getPaymentByOrderId(id);
+  }
 
 
 @Post('mpesa/callback')

@@ -104,14 +104,21 @@ export class DarajaService {
     if (existingPayment) {
       if (existingPayment.status === PaymentStatus.pending) {
         
-        throw new Error("A payment is already in progress. Please check your phone for the PIN prompt.");
-      }
-      if (existingPayment.status === PaymentStatus.completed) {
-        // Stop them from paying for an order that is already cleared.
-        throw new Error("This order has already been paid for successfully.");
-      }
-      // If the status is 'failed', we skip this block and allow them to try again
-    }
+       const now = new Date();
+        const paymentAgeMs = now.getTime() - existingPayment.createdAt.getTime();
+        const TWO_MINUTES_MS = 2 * 60 * 1000;
+
+        
+        if (paymentAgeMs < TWO_MINUTES_MS) {
+          throw new Error("A payment is already in progress. Please check your phone for the PIN prompt.");
+        } 
+        
+        else {
+          console.warn(`Clearing zombie pending payment for Order ${order.id}`);
+          existingPayment.status = 'failed' as PaymentStatus;
+          existingPayment.resultDesc = 'Payment timed out waiting for Safaricom callback';
+          await this.paymentRepository.save(existingPayment);
+    }}}
 
     const tempCheckoutId = `temp_${Date.now()}_${Math.random()}`;
     
@@ -203,4 +210,13 @@ export class DarajaService {
     await this.orderService.updateOrder(payment.orderNumber, OrderStatus.failed);
   }
 }
+
+
+async getPaymentByOrderId(orderId: number) {
+    return await this.paymentRepository.findOne({
+      where: { orderNumber: orderId },
+      order: { id: 'DESC' }
+    });
+  }
+
 }
