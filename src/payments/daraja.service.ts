@@ -95,21 +95,32 @@ export class DarajaService {
   async payForOrder(ID:number,phoneNumber:string):Promise< {order: Order; paymentdata: any }>{
     const order= await this.orderService.getOrderbyID(ID)
 
+    if (order.status === 'completed') {
+      throw new Error("This order has already been paid for successfully.");
+    }
+
   //Idempotency check
   const existingPayment = await this.paymentRepository.findOne({
       where: { orderNumber: order.id },
       order: { id: 'DESC' }
     });
 
-    if (existingPayment) {
+    if (existingPayment) 
+      {
+
+      if (existingPayment.status === PaymentStatus.completed) {
+        throw new Error("This order has already been paid for successfully.");
+      }
+
       if (existingPayment.status === PaymentStatus.pending) {
         
        const now = new Date();
         const paymentAgeMs = now.getTime() - existingPayment.createdAt.getTime();
-        const TWO_MINUTES_MS = 2 * 60 * 1000;
+        //Created 5 minute timeout to the payment cycle so if any silent fails happen the order and payment status get updated to failed
+        const TIMEOUT = 5 * 60 * 1000;
 
         
-        if (paymentAgeMs < TWO_MINUTES_MS) {
+        if (paymentAgeMs < TIMEOUT) {
           throw new Error("A payment is already in progress. Please check your phone for the PIN prompt.");
         } 
         
@@ -118,6 +129,7 @@ export class DarajaService {
           existingPayment.status = 'failed' as PaymentStatus;
           existingPayment.resultDesc = 'Payment timed out waiting for Safaricom callback';
           await this.paymentRepository.save(existingPayment);
+          await this.orderService.updateOrder(order.id, 'failed');
     }}}
 
     const tempCheckoutId = `temp_${Date.now()}_${Math.random()}`;
