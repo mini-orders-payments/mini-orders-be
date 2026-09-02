@@ -23,7 +23,7 @@ export class Order {
   @Column({type:'varchar',default:'pending'})
   status!:OrderStatus;
 
-  @CreateDateColumn()
+  @CreateDateColumn({type:'timestamptz',name:"created_at"})
   createdAt!:Date;
 
 

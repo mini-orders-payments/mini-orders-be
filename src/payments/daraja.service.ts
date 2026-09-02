@@ -1,8 +1,8 @@
 import { Injectable ,HttpException,HttpStatus} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { OrderService } from 'src/orders/order.service';
-import { Order } from 'src/orders/order.entity';
-import { OrderStatus } from 'src/orders/order.entity';
+import { OrderService } from '@/orders/order.service';
+import { Order } from '@/orders/order.entity';
+import { OrderStatus } from '@/orders/order.entity';
 import { PaymentStatus } from './payment.entity';
 import { createPaymentDto } from './payment.dto';
 import { Payment } from './payment.entity';
@@ -95,23 +95,42 @@ export class DarajaService {
   async payForOrder(ID:number,phoneNumber:string):Promise< {order: Order; paymentdata: any }>{
     const order= await this.orderService.getOrderbyID(ID)
 
+    if (order.status === 'completed') {
+      throw new Error("This order has already been paid for successfully.");
+    }
+
   //Idempotency check
   const existingPayment = await this.paymentRepository.findOne({
       where: { orderNumber: order.id },
       order: { id: 'DESC' }
     });
 
-    if (existingPayment) {
-      if (existingPayment.status === PaymentStatus.pending) {
-        
-        throw new Error("A payment is already in progress. Please check your phone for the PIN prompt.");
-      }
+    if (existingPayment) 
+      {
+
       if (existingPayment.status === PaymentStatus.completed) {
-        // Stop them from paying for an order that is already cleared.
         throw new Error("This order has already been paid for successfully.");
       }
-      // If the status is 'failed', we skip this block and allow them to try again
-    }
+
+      if (existingPayment.status === PaymentStatus.pending) {
+        
+       const now = new Date();
+        const paymentAgeMs = now.getTime() - existingPayment.createdAt.getTime();
+        //Created 5 minute timeout to the payment cycle so if any silent fails happen the order and payment status get updated to failed
+        const TIMEOUT = 5 * 60 * 1000;
+
+        
+        if (paymentAgeMs < TIMEOUT) {
+          throw new Error("A payment is already in progress. Please check your phone for the PIN prompt.");
+        } 
+        
+        else {
+          console.warn(`Clearing zombie pending payment for Order ${order.id}`);
+          existingPayment.status = 'failed' as PaymentStatus;
+          existingPayment.resultDesc = 'Payment timed out waiting for Safaricom callback';
+          await this.paymentRepository.save(existingPayment);
+          await this.orderService.updateOrder(order.id, 'failed');
+    }}}
 
     const tempCheckoutId = `temp_${Date.now()}_${Math.random()}`;
     
@@ -203,4 +222,13 @@ export class DarajaService {
     await this.orderService.updateOrder(payment.orderNumber, OrderStatus.failed);
   }
 }
+
+
+async getPaymentByOrderId(orderId: number) {
+    return await this.paymentRepository.findOne({
+      where: { orderNumber: orderId },
+      order: { id: 'DESC' }
+    });
+  }
+
 }

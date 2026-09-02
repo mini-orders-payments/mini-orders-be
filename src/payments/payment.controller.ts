@@ -1,8 +1,10 @@
-import { Body, Controller, HttpCode, HttpStatus, Post ,Get,Param,ParseIntPipe,Delete, Injectable } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post ,Get,Param,ParseIntPipe,Request, UnauthorizedException, UseGuards, } from '@nestjs/common';
 import { DarajaService } from './daraja.service';
 import { Payment } from './payment.entity';
 import { OrderService } from 'src/orders/order.service';
 import { createPaymentDto } from './payment.dto';
+import { Order } from 'src/orders/order.entity';
+import { JwtAuthGuard } from 'src/auth/jwt/jwt-auth.guard';
 
 
 @Controller("pay")
@@ -20,6 +22,28 @@ export class PaymentController{
     return await this.DarajaService.payForOrder(id,phoneNumber)
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('order/:id')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async getPayment(@Param('id',ParseIntPipe)id:number,@Request() req:any){
+
+    const payment= await this.DarajaService.getPaymentByOrderId(id);
+    if (!payment) return null;
+
+    const order= await this.orderService.getOrderbyID(id)
+
+    if (order.userId !==req.userId ){
+      
+      throw new UnauthorizedException("You do not have permission to view this payment.");
+    
+    }
+
+    return {
+      paymentCode: payment.paymentCode,
+      resultDesc: payment.resultDesc,
+      status: payment.status
+    };
+  }
 
 
 @Post('mpesa/callback')
