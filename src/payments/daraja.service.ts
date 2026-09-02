@@ -1,8 +1,8 @@
 import { Injectable ,HttpException,HttpStatus} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { OrderService } from 'src/orders/order.service';
-import { Order } from 'src/orders/order.entity';
-import { OrderStatus } from 'src/orders/order.entity';
+import { OrderService } from '@/orders/order.service';
+import { Order } from '@/orders/order.entity';
+import { OrderStatus } from '@/orders/order.entity';
 import { PaymentStatus } from './payment.entity';
 import { createPaymentDto } from './payment.dto';
 import { Payment } from './payment.entity';
