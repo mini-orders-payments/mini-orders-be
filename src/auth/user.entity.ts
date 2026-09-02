@@ -1,5 +1,5 @@
 import {Column,PrimaryGeneratedColumn,OneToMany,Entity,CreateDateColumn} from 'typeorm'
-import { Order } from 'src/orders/order.entity'
+import { Order } from '@/orders/order.entity'
 
 @Entity('users')
 

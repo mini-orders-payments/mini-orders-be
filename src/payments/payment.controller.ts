@@ -1,10 +1,10 @@
 import { Body, Controller, HttpCode, HttpStatus, Post ,Get,Param,ParseIntPipe,Request, UnauthorizedException, UseGuards, } from '@nestjs/common';
 import { DarajaService } from './daraja.service';
 import { Payment } from './payment.entity';
-import { OrderService } from 'src/orders/order.service';
+import { OrderService } from '@/orders/order.service';
 import { createPaymentDto } from './payment.dto';
-import { Order } from 'src/orders/order.entity';
-import { JwtAuthGuard } from 'src/auth/jwt/jwt-auth.guard';
+import { Order } from '@/orders/order.entity';
+import { JwtAuthGuard } from '@/auth/jwt/jwt-auth.guard';
 
 
 @Controller("pay")
@@ -24,15 +24,17 @@ export class PaymentController{
 
   @UseGuards(JwtAuthGuard)
   @Get('order/:id')
-  @HttpCode(HttpStatus.ACCEPTED)
+  @HttpCode(HttpStatus.OK)
   async getPayment(@Param('id',ParseIntPipe)id:number,@Request() req:any){
+   
 
     const payment= await this.DarajaService.getPaymentByOrderId(id);
     if (!payment) return null;
+    
 
     const order= await this.orderService.getOrderbyID(id)
 
-    if (order.userId !==req.userId ){
+    if (order.userId !== req.user.id) {
       
       throw new UnauthorizedException("You do not have permission to view this payment.");
     
