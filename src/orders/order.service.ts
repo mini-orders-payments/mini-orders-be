@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Order } from './order.entity';
 import { Repository } from "typeorm"
 import { CreateOrderDto,OrderStatus,UpdateOrderDto } from './orders.dto';
-import { DarajaService } from 'src/payments/daraja.service';
+import { DarajaService } from '@/payments/daraja.service';
 
 
 

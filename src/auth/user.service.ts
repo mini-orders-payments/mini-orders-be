@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { User } from "./user.entity";
-import { Order } from "src/orders/order.entity";
+import { Order } from "@/orders/order.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { OrderService } from "src/orders/order.service";
+import { OrderService } from "@/orders/order.service";
 
 export enum OrderStatus{
     pending='pending',

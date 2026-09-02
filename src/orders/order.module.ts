@@ -3,7 +3,7 @@ import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from './order.entity';
-import { PaymentModule } from 'src/payments/payment.module';
+import { PaymentModule } from '@/payments/payment.module';
 
 @Module({
   imports:[TypeOrmModule.forFeature([Order]),forwardRef(()=>PaymentModule)],
